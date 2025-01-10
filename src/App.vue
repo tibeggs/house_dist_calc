@@ -10,6 +10,7 @@
         ref="homeAddressInput"
         class="w-full p-2 border rounded text-black"
         placeholder="Enter your home address"
+        @place_changed="clearMap"
       />
     </div>
 
@@ -27,6 +28,7 @@
             :ref="'poiAddress_' + index"
             class="w-2/3 p-2 border rounded"
             placeholder="Address"
+            @place_changed="clearMap"
           />
           <button 
             @click="removePOI(index)"
@@ -88,6 +90,21 @@ export default {
     this.initializeMap()
   },
   methods: {
+    clearMap() {
+      // Clear all existing routes
+      this.directionsRenderers.forEach(renderer => renderer.setMap(null))
+      this.directionsRenderers = []
+
+      // Clear all existing markers
+      this.markers.forEach(marker => marker.setMap(null))
+      this.markers = []
+
+      // Reset distance and duration for all POIs
+      this.pointsOfInterest.forEach(poi => {
+        poi.distance = null
+        poi.duration = null
+      })
+    },
     initializeMap() {
       const script = document.createElement('script')
       script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_VUE_APP_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
@@ -120,6 +137,8 @@ export default {
         } else {
           this.pointsOfInterest[index].address = place.formatted_address
         }
+        // Clear the map when any address changes
+        this.clearMap()
       })
       this.autocompletes.push(autocomplete)
     },
@@ -138,11 +157,7 @@ export default {
     },
     removePOI(index) {
       this.pointsOfInterest.splice(index, 1)
-      // Remove corresponding route
-      if (this.directionsRenderers[index]) {
-        this.directionsRenderers[index].setMap(null)
-        this.directionsRenderers.splice(index, 1)
-      }
+      this.clearMap()
     },
     async calculateRoutes() {
       if (!this.homeAddress || !this.directionsService) {
@@ -156,9 +171,8 @@ export default {
         return
       }
 
-      // Clear existing routes
-      this.directionsRenderers.forEach(renderer => renderer.setMap(null))
-      this.directionsRenderers = []
+      // Clear existing routes and markers before calculating new ones
+      this.clearMap()
 
       // Calculate route for each POI
       for (let i = 0; i < this.pointsOfInterest.length; i++) {
@@ -212,7 +226,6 @@ export default {
       })
     },
     getRouteColor(index) {
-      // Array of distinct colors for routes
       const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFA500', '#800080', '#008080', '#FFD700', '#FF69B4']
       return colors[index % colors.length]
     },
